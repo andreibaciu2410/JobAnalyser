@@ -49,46 +49,6 @@ with st.sidebar:
 # 2. DATA MODELS (PYDANTIC SCHEMAS)
 # ==============================================================================
 
-class JobAnalysis(BaseModel):
-    role_title: str = Field(..., description="Titlul jobului standardizat")
-    company_name: str = Field(..., description="Numele companiei")
-    seniority: Literal["Intern", "Junior", "Mid", "Senior", "Lead", "Architect"] = Field(..., description="Nivelul de experiență dedus")
-    match_score: int = Field(..., ge=0, le=100, description="Scor 0-100: Calitatea descrierii jobului")
-    tech_stack: List[str] = Field(..., description="Listă cu tehnologii specifice (ex: Python, AWS, React)")
-    red_flags: List[RedFlag] = Field(..., description="Lista de semnale de alarmă (toxicitate, stres, vaguitate)")
-    summary: str = Field(..., description="Un rezumat scurt al rolului (max 2 fraze) în limba română")
-    is_remote: bool = Field(False, description="True dacă jobul este remote sau hibrid")
-    salary_range: SalaryRange = Field(..., description="Range salarial")
-    location: Location = Field(..., description="Detaliile locatiei jobului")
-
-    @model_validator(mode="after")
-    def remote_location_consistency(self):
-        # sa avem consistenta intre cele 2 campuri
-        if self.is_remote != self.location.is_remote:
-            self.red_flags.append(
-                RedFlag(
-                    severity="medium",
-                    category="vague",
-                    message=f"Inconsistenta intre is_remote={self.is_remote} si location.is_remote={self.location.is_remote}"
-                )
-            )
-        
-        if self.is_remote:
-            office_patterns = re.compile(r"\b(office|on[-\s]?site|onsite|hybrid|hibrid|birou|sediu|headquarters|hq)\b", re.IGNORECASE)
-            combined = f"{self.location.city} {self.location.country}"
-
-            if office_patterns.search(combined):
-                self.red_flags.append(
-                    RedFlag(
-                        severity="medium",
-                        category="vague",
-                        message="Remote=True, dar câmpurile de locație conțin indicii de prezență la birou"
-                    )
-                )
-
-        return self
-
-
 class SalaryRange(BaseModel):
     min: int = Field(..., description="Salariul minim")
     max: int = Field(..., description="Salariul maxim")
@@ -122,6 +82,45 @@ class RawExtraction(BaseModel):
     def normalize_location(self):
         if self.location and not self.location.city and not self.location.country:
             self.location = None
+        return self
+    
+class JobAnalysis(BaseModel):
+    role_title: str = Field(..., description="Titlul jobului standardizat")
+    company_name: str = Field(..., description="Numele companiei")
+    seniority: Literal["Intern", "Junior", "Mid", "Senior", "Lead", "Architect"] = Field(..., description="Nivelul de experiență dedus")
+    match_score: int = Field(..., ge=0, le=100, description="Scor 0-100: Calitatea descrierii jobului")
+    tech_stack: List[str] = Field(..., description="Listă cu tehnologii specifice (ex: Python, AWS, React)")
+    red_flags: List[RedFlag] = Field(default_factory=list, description="Lista de semnale de alarmă (toxicitate, stres, vaguitate)")
+    summary: str = Field(..., description="Un rezumat scurt al rolului (max 2 fraze) în limba română")
+    is_remote: bool = Field(False, description="True dacă jobul este remote sau hibrid")
+    salary_range: SalaryRange = Field(..., description="Range salarial")
+    location: Location = Field(..., description="Detaliile locatiei jobului")
+
+    @model_validator(mode="after")
+    def remote_location_consistency(self):
+        # sa avem consistenta intre cele 2 campuri
+        if self.is_remote != self.location.is_remote:
+            self.red_flags.append(
+                RedFlag(
+                    severity="medium",
+                    category="vague",
+                    message=f"Inconsistenta intre is_remote={self.is_remote} si location.is_remote={self.location.is_remote}"
+                )
+            )
+        
+        if self.is_remote:
+            office_patterns = re.compile(r"\b(office|on[-\s]?site|onsite|hybrid|hibrid|birou|sediu|headquarters|hq)\b", re.IGNORECASE)
+            combined = f"{self.location.city} {self.location.country}"
+
+            if office_patterns.search(combined):
+                self.red_flags.append(
+                    RedFlag(
+                        severity="medium",
+                        category="vague",
+                        message="Remote=True, dar câmpurile de locație conțin indicii de prezență la birou"
+                    )
+                )
+
         return self
 
 class StrategicAdvice(BaseModel):
