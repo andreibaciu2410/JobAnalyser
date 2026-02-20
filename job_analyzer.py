@@ -87,7 +87,7 @@ class RawExtraction(BaseModel):
 class JobAnalysis(BaseModel):
     role_title: str = Field(..., description="Titlul jobului standardizat")
     company_name: str = Field(..., description="Numele companiei")
-    seniority: Literal["Intern", "Junior", "Mid", "Senior", "Lead", "Architect"] = Field(..., description="Nivelul de experiență dedus")
+    seniority: Literal["Intern", "Junior", "Mid", "Senior", "Lead", "Architect", "Unknown"] = Field("Unknown", description="Nivelul de experiență dedus")
     match_score: int = Field(..., ge=0, le=100, description="Scor 0-100: Calitatea descrierii jobului")
     tech_stack: List[str] = Field(..., description="Listă cu tehnologii specifice (ex: Python, AWS, React)")
     red_flags: List[RedFlag] = Field(default_factory=list, description="Lista de semnale de alarmă (toxicitate, stres, vaguitate)")
